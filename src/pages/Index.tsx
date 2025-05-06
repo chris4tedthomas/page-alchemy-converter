@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import ConversionSteps from "@/components/ConversionSteps";
 import AppHeader from "@/components/AppHeader";
 import ResultsView from "@/components/ResultsView";
+import { convertElementorContent, convertGHLContent, parseHtmlContent } from "@/lib/converters";
 
 type ConversionStatus = "idle" | "converting" | "success" | "error";
 
@@ -29,7 +30,7 @@ const Index = () => {
     }
   };
 
-  const handleConversion = (type: "url" | "file") => {
+  const handleConversion = async (type: "url" | "file") => {
     // Validate inputs
     if (type === "url" && !url.trim()) {
       toast({
@@ -52,63 +53,70 @@ const Index = () => {
     // Start conversion process
     setStatus("converting");
     
-    // Simulate conversion process
-    setTimeout(() => {
-      // This would be replaced with actual conversion logic
-      const mockHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Converted Page</title>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background-color: #f8f9fa;
-      text-align: center;
-      padding: 40px 0;
-    }
-    .header h1 {
-      color: #343a40;
-      margin: 0;
-    }
-    /* More optimized styles would be here */
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header class="header">
-      <h1>Your Optimized Page</h1>
-    </header>
-    <main>
-      <section>
-        <h2>Clean HTML Structure</h2>
-        <p>This is your converted page with clean, optimized HTML ready for Keap.</p>
-      </section>
-      <!-- More content would be here -->
-    </main>
-  </div>
-</body>
-</html>`;
-
-      setConvertedHtml(mockHtml);
+    try {
+      let htmlContent = "";
+      
+      if (type === "url") {
+        // Fetch URL content
+        const response = await fetch(`https://cors-anywhere.herokuapp.com/${url}`);
+        if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);
+        htmlContent = await response.text();
+      } else {
+        // Read file content
+        htmlContent = await readFileAsText(file as File);
+      }
+      
+      // Detect page type and process accordingly
+      const pageType = detectPageType(htmlContent);
+      let processedHtml = "";
+      
+      if (pageType === "elementor") {
+        processedHtml = convertElementorContent(htmlContent);
+      } else if (pageType === "ghl") {
+        processedHtml = convertGHLContent(htmlContent);
+      } else {
+        // Generic HTML cleaning
+        processedHtml = parseHtmlContent(htmlContent);
+      }
+      
+      setConvertedHtml(processedHtml);
       setStatus("success");
+      
       toast({
         title: "Conversion Complete",
         description: "Your page has been successfully converted to clean HTML!",
       });
-    }, 3000); // Simulate a 3 second conversion process
+    } catch (error) {
+      console.error("Conversion error:", error);
+      setStatus("error");
+      
+      toast({
+        title: "Conversion Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred during conversion.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = (e) => reject(new Error("Failed to read file"));
+      reader.readAsText(file);
+    });
+  };
+  
+  const detectPageType = (htmlContent: string): "elementor" | "ghl" | "generic" => {
+    if (htmlContent.includes("elementor") || 
+        htmlContent.includes("wp-content")) {
+      return "elementor";
+    } else if (htmlContent.includes("gohighlevel") || 
+               htmlContent.includes("ghl.page")) {
+      return "ghl";
+    } else {
+      return "generic";
+    }
   };
 
   const resetConverter = () => {

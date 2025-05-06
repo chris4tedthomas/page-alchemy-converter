@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,34 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Custom colors for our app
+				brand: {
+					50: "#eaf5ff",
+					100: "#d6ebff",
+					200: "#addcff",
+					300: "#84cbff",
+					400: "#5ab4ff",
+					500: "#3196ff",
+					600: "#1773ff",
+					700: "#1259ff",
+					800: "#1747c9",
+					900: "#1a3f9e",
+					950: "#162657",
+				},
+				teal: {
+					50: "#effffd",
+					100: "#c6fff8",
+					200: "#8ffff1",
+					300: "#53f8e9",
+					400: "#2be1d9",
+					500: "#13c5c2",
+					600: "#0a9c9e",
+					700: "#0f7b7d",
+					800: "#125f66",
+					900: "#134e56",
+					950: "#033340",
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +112,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-soft': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.7' }
+				},
+				'spin-slow': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-soft': 'pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'spin-slow': 'spin-slow 3s linear infinite'
 			}
 		}
 	},

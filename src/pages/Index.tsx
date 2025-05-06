@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ArrowRight, Code, FileCheck, FileUp, Link, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import ConversionSteps from "@/components/ConversionSteps";
 import AppHeader from "@/components/AppHeader";
 import ResultsView from "@/components/ResultsView";
@@ -57,10 +56,26 @@ const Index = () => {
       let htmlContent = "";
       
       if (type === "url") {
-        // Fetch URL content
-        const response = await fetch(`https://cors-anywhere.herokuapp.com/${url}`);
-        if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);
-        htmlContent = await response.text();
+        try {
+          // First try using allorigins.win as CORS proxy
+          const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const response = await fetch(corsProxyUrl);
+          
+          if (!response.ok) throw new Error("Failed with first proxy");
+          htmlContent = await response.text();
+        } catch (e) {
+          console.log("First proxy failed, trying backup...");
+          try {
+            // Fallback to cors-anywhere
+            const backupProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            const backupResponse = await fetch(backupProxyUrl);
+            
+            if (!backupResponse.ok) throw new Error("All proxies failed");
+            htmlContent = await backupResponse.text();
+          } catch (backupError) {
+            throw new Error("All CORS proxies failed. Please try uploading the file directly instead.");
+          }
+        }
       } else {
         // Read file content
         htmlContent = await readFileAsText(file as File);

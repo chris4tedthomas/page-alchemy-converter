@@ -5,24 +5,50 @@ import DOMPurify from 'dompurify';
  */
 export function parseHtmlContent(htmlContent: string): string {
   try {
-    // Create a DOM parser
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
     
-    // Extract the main content
-    const body = doc.body;
+    // Remove unwanted elements
+    const unwantedSelectors = [
+      'script', 'noscript', 'style[data-type="vc_shortcodes-custom-css"]',
+      'link[rel="stylesheet"]', 'meta', 'title',
+      '.wp-block-code', '.elementor-element', 
+      '[data-elementor-type]', '.elementor-widget',
+      'header', 'footer', 'nav', '.navigation',
+      '.cookie-notice', '.gdpr-notice',
+      '[class*="analytics"]', '[class*="tracking"]',
+      'iframe[src*="google"]', 'iframe[src*="facebook"]'
+    ];
     
-    // Remove unnecessary scripts
-    const scripts = body.querySelectorAll('script');
-    scripts.forEach(script => script.remove());
+    unwantedSelectors.forEach(selector => {
+      const elements = doc.querySelectorAll(selector);
+      elements.forEach(el => el.remove());
+    });
     
-    // Remove tracking pixels, analytics tags
-    const trackingElements = body.querySelectorAll('iframe[src*="google"], iframe[src*="facebook"], img[src*="analytics"]');
-    trackingElements.forEach(el => el.remove());
+    // Get main content
+    let mainContent = '';
+    const contentSelectors = [
+      'main', '.main-content', '#main-content',
+      '.content', '#content', '.post-content',
+      '.entry-content', '.page-content', 'article',
+      '.container', '.site-content'
+    ];
     
-    // Generate a clean HTML structure
-    const cleanHTML = `
-<!DOCTYPE html>
+    for (const selector of contentSelectors) {
+      const element = doc.querySelector(selector);
+      if (element && element.textContent?.trim()) {
+        mainContent = element.innerHTML;
+        break;
+      }
+    }
+    
+    // Fallback to body content if no main content found
+    if (!mainContent.trim()) {
+      mainContent = doc.body.innerHTML;
+    }
+    
+    // Clean and format the HTML
+    const cleanHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -30,23 +56,66 @@ export function parseHtmlContent(htmlContent: string): string {
   <title>${doc.title || "Converted Page"}</title>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
       line-height: 1.6;
       margin: 0;
-      padding: 0;
+      padding: 20px;
+      color: #333;
     }
     .container {
-      width: 100%;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 0 20px;
     }
-    ${extractCriticalCSS(doc)}
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    p {
+      margin-bottom: 1em;
+    }
+    a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f5f5f5;
+    }
+    .btn, button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover, button:hover {
+      background-color: #0052a3;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    ${DOMPurify.sanitize(body.innerHTML)}
+    ${DOMPurify.sanitize(mainContent)}
   </div>
 </body>
 </html>`;

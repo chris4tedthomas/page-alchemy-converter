@@ -57,24 +57,41 @@ const Index = () => {
       
       if (type === "url") {
         try {
-          // First try using allorigins.win as CORS proxy
-          const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-          const response = await fetch(corsProxyUrl);
+          console.log("Fetching URL:", url);
+          // Try multiple CORS proxy services in sequence
+          const proxies = [
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`
+          ];
           
-          if (!response.ok) throw new Error("Failed with first proxy");
-          htmlContent = await response.text();
-        } catch (e) {
-          console.log("First proxy failed, trying backup...");
-          try {
-            // Fallback to cors-anywhere
-            const backupProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            const backupResponse = await fetch(backupProxyUrl);
-            
-            if (!backupResponse.ok) throw new Error("All proxies failed");
-            htmlContent = await backupResponse.text();
-          } catch (backupError) {
-            throw new Error("All CORS proxies failed. Please try uploading the file directly instead.");
+          let lastError = null;
+          for (const proxyUrl of proxies) {
+            try {
+              console.log("Trying proxy:", proxyUrl);
+              const response = await fetch(proxyUrl);
+              
+              if (response.ok) {
+                htmlContent = await response.text();
+                console.log("Successfully fetched content, length:", htmlContent.length);
+                break;
+              } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+            } catch (proxyError) {
+              console.log("Proxy failed:", proxyError);
+              lastError = proxyError;
+              continue;
+            }
           }
+          
+          if (!htmlContent) {
+            throw new Error("All CORS proxies failed. Please try downloading the page and uploading the HTML file instead.");
+          }
+        } catch (e) {
+          console.error("URL fetch error:", e);
+          throw e;
         }
       } else {
         // Read file content
@@ -83,6 +100,8 @@ const Index = () => {
       
       // Detect page type and process accordingly
       const pageType = detectPageType(htmlContent);
+      console.log("Detected page type:", pageType);
+      
       let processedHtml = "";
       
       if (pageType === "elementor") {
@@ -188,7 +207,7 @@ const Index = () => {
                           <div className="flex space-x-2">
                             <Input 
                               id="url"
-                              placeholder="https://example.com/your-page"
+                              placeholder="https://taxauctionsresearch.com"
                               value={url}
                               onChange={(e) => setUrl(e.target.value)}
                               disabled={status === "converting"}
